@@ -1,0 +1,74 @@
+{
+  "realm": "development",
+  "enabled": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "USER",
+        "description": "Permite acesso ao user-mf (verificado pelo shell-app)"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "dev-client",
+      "publicClient": false,
+      "secret": "change-me",
+      "redirectUris": ["*"],
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "optionalClientScopes": [
+        "user.read",
+        "user.write"
+      ]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "user.read",
+      "description": "Leitura de dados de usuários",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "user.read",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "scope",
+            "claim.value": "user.read",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "user.write",
+      "description": "Criação e atualização de dados de usuários",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "user.write",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "scope",
+            "claim.value": "user.write",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": []
+}
+
