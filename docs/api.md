@@ -25,8 +25,11 @@
 
 | Recurso | Caminho | Descrição |
 |---------|---------|-----------|
-| Usuários | `/api/v1/users` | Gestão de usuários |
-| Roles | `/api/v1/users/{id}/roles` | Gestão de roles do usuário |
+| Usuários | `/api/v1/users` | Gestão de usuários (ADMIN) |
+| Roles | `/api/v1/users/{id}/roles` | Gestão de roles do usuário (ADMIN) |
+| Perfil | `/api/v1/profile` | Perfil do usuário autenticado (USER/ADMIN) |
+| Família | `/api/v1/profile/family` | Gestão de família (USER/ADMIN) |
+| Convites | `/api/v1/profile/family/invitations` | Fluxo de convites de família (USER/ADMIN) |
 
 ## Documentação
 

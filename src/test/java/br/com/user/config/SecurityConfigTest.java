@@ -1,5 +1,8 @@
 package br.com.user.config;
 
+import br.com.user.modules.family.FamilyService;
+import br.com.user.modules.profile.ProfileRepository;
+import br.com.user.modules.profile.ProfileService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -15,6 +18,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+// Testes migrados de scope-based (user.read/write) para role-based (ROLE_ADMIN/ROLE_USER)
+
 @WebMvcTest
 @Import(SecurityConfig.class)
 @TestPropertySource(properties = "spring.security.oauth2.resourceserver.jwt.issuer-uri=http://mock-keycloak/realms/development")
@@ -25,6 +30,15 @@ class SecurityConfigTest {
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private ProfileService profileService;
+
+    @MockitoBean
+    private FamilyService familyService;
+
+    @MockitoBean
+    private ProfileRepository profileRepository;
 
     @Test
     void swaggerUiShouldBeAccessibleWithoutToken() throws Exception {
@@ -56,6 +70,8 @@ class SecurityConfigTest {
             .andExpect(jsonPath("$.message").value("Token ausente ou inválido"));
     }
 
+    // ── /api/v1/users/** ─────────────────────────────────────────────────────
+
     @Test
     void getUsersShouldReturn401WithoutToken() throws Exception {
         mockMvc.perform(get("/api/v1/users"))
@@ -65,7 +81,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    void getUsersShouldReturn403WithTokenButWithoutScope() throws Exception {
+    void getUsersShouldReturn403WithTokenButWithoutRole() throws Exception {
         mockMvc.perform(get("/api/v1/users")
                 .with(jwt()))
             .andExpect(status().isForbidden())
@@ -74,16 +90,16 @@ class SecurityConfigTest {
     }
 
     @Test
-    void getUsersShouldReturn403WithWrongScope() throws Exception {
+    void getUsersShouldReturn403WithUserRole() throws Exception {
         mockMvc.perform(get("/api/v1/users")
-                .with(jwt().authorities(new SimpleGrantedAuthority("user.write"))))
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
             .andExpect(status().isForbidden());
     }
 
     @Test
-    void getUsersShouldBeAccessibleWithReadScope() throws Exception {
+    void getUsersShouldBeAccessibleWithAdminRole() throws Exception {
         mockMvc.perform(get("/api/v1/users")
-                .with(jwt().authorities(new SimpleGrantedAuthority("user.read"))))
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
             .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
             .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
     }
@@ -99,22 +115,22 @@ class SecurityConfigTest {
     }
 
     @Test
-    void postUsersShouldReturn403WithReadScope() throws Exception {
+    void postUsersShouldReturn403WithUserRole() throws Exception {
         mockMvc.perform(post("/api/v1/users")
                 .contentType("application/json")
                 .content("{}")
-                .with(jwt().authorities(new SimpleGrantedAuthority("user.read"))))
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.status").value(403))
             .andExpect(jsonPath("$.error").value("Forbidden"));
     }
 
     @Test
-    void postUsersShouldBeAccessibleWithWriteScope() throws Exception {
+    void postUsersShouldBeAccessibleWithAdminRole() throws Exception {
         mockMvc.perform(post("/api/v1/users")
                 .contentType("application/json")
                 .content("{}")
-                .with(jwt().authorities(new SimpleGrantedAuthority("user.write"))))
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
             .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
             .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
     }
@@ -128,20 +144,20 @@ class SecurityConfigTest {
     }
 
     @Test
-    void putUserShouldReturn403WithReadScope() throws Exception {
+    void putUserShouldReturn403WithUserRole() throws Exception {
         mockMvc.perform(put("/api/v1/users/1")
                 .contentType("application/json")
                 .content("{}")
-                .with(jwt().authorities(new SimpleGrantedAuthority("user.read"))))
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
             .andExpect(status().isForbidden());
     }
 
     @Test
-    void putUserShouldBeAccessibleWithWriteScope() throws Exception {
+    void putUserShouldBeAccessibleWithAdminRole() throws Exception {
         mockMvc.perform(put("/api/v1/users/1")
                 .contentType("application/json")
                 .content("{}")
-                .with(jwt().authorities(new SimpleGrantedAuthority("user.write"))))
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
             .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
             .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
     }
@@ -153,20 +169,19 @@ class SecurityConfigTest {
     }
 
     @Test
-    void deleteUserShouldReturn403WithReadScope() throws Exception {
+    void deleteUserShouldReturn403WithUserRole() throws Exception {
         mockMvc.perform(delete("/api/v1/users/1")
-                .with(jwt().authorities(new SimpleGrantedAuthority("user.read"))))
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
             .andExpect(status().isForbidden());
     }
 
     @Test
-    void deleteUserShouldBeAccessibleWithWriteScope() throws Exception {
+    void deleteUserShouldBeAccessibleWithAdminRole() throws Exception {
         mockMvc.perform(delete("/api/v1/users/1")
-                .with(jwt().authorities(new SimpleGrantedAuthority("user.write"))))
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
             .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
             .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
     }
-
 
     @Test
     void getUserRolesShouldReturn401WithoutToken() throws Exception {
@@ -175,16 +190,16 @@ class SecurityConfigTest {
     }
 
     @Test
-    void getUserRolesShouldReturn403WithWriteScope() throws Exception {
+    void getUserRolesShouldReturn403WithUserRole() throws Exception {
         mockMvc.perform(get("/api/v1/users/1/roles")
-                .with(jwt().authorities(new SimpleGrantedAuthority("user.write"))))
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
             .andExpect(status().isForbidden());
     }
 
     @Test
-    void getUserRolesShouldBeAccessibleWithReadScope() throws Exception {
+    void getUserRolesShouldBeAccessibleWithAdminRole() throws Exception {
         mockMvc.perform(get("/api/v1/users/1/roles")
-                .with(jwt().authorities(new SimpleGrantedAuthority("user.read"))))
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
             .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
             .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
     }
@@ -198,20 +213,51 @@ class SecurityConfigTest {
     }
 
     @Test
-    void putUserRolesShouldReturn403WithReadScope() throws Exception {
+    void putUserRolesShouldReturn403WithUserRole() throws Exception {
         mockMvc.perform(put("/api/v1/users/1/roles")
                 .contentType("application/json")
                 .content("[]")
-                .with(jwt().authorities(new SimpleGrantedAuthority("user.read"))))
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
             .andExpect(status().isForbidden());
     }
 
     @Test
-    void putUserRolesShouldBeAccessibleWithWriteScope() throws Exception {
+    void putUserRolesShouldBeAccessibleWithAdminRole() throws Exception {
         mockMvc.perform(put("/api/v1/users/1/roles")
                 .contentType("application/json")
                 .content("[]")
-                .with(jwt().authorities(new SimpleGrantedAuthority("user.write"))))
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+            .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
+            .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
+    }
+
+    // ── /api/v1/profile/** ───────────────────────────────────────────────────
+
+    @Test
+    void getProfileShouldReturn401WithoutToken() throws Exception {
+        mockMvc.perform(get("/api/v1/profile"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getProfileShouldReturn403WithoutRole() throws Exception {
+        mockMvc.perform(get("/api/v1/profile")
+                .with(jwt()))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getProfileShouldBeAccessibleWithUserRole() throws Exception {
+        mockMvc.perform(get("/api/v1/profile")
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
+            .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
+            .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
+    }
+
+    @Test
+    void getProfileShouldBeAccessibleWithAdminRole() throws Exception {
+        mockMvc.perform(get("/api/v1/profile")
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
             .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
             .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
     }

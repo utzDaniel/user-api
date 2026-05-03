@@ -6,12 +6,38 @@
       {
         "name": "USER",
         "description": "Permite acesso ao user-mf (verificado pelo shell-app)"
+      },
+      {
+        "name": "FINANCE",
+        "description": "Permite acesso ao finance-mf (verificado pelo shell-app)"
+      },
+      {
+        "name": "DASHBOARD",
+        "description": "Permite acesso ao dashboard-mf (verificado pelo shell-app)"
       }
     ]
   },
   "clients": [
     {
+      "clientId": "shell-app",
+      "name": "Shell App (Angular)",
+      "publicClient": true,
+      "redirectUris": [
+        "http://localhost:4200/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4200"
+      ],
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": ["basic", "roles", "profile-claims"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
       "clientId": "dev-client",
+      "name": "Backend Service Client",
       "publicClient": false,
       "secret": "change-me",
       "redirectUris": ["*"],
@@ -19,18 +45,86 @@
       "serviceAccountsEnabled": true,
       "optionalClientScopes": [
         "user.read",
-        "user.write"
+        "user.write",
+        "finance.read",
+        "finance.write"
       ]
     }
   ],
   "clientScopes": [
     {
+      "name": "profile-claims",
+      "description": "Inclui nome e username do usuário no access token",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "false" },
+      "protocolMappers": [
+        {
+          "name": "given name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "firstName",
+            "claim.name": "given_name",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "family name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "lastName",
+            "claim.name": "family_name",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "name": "roles",
+      "description": "Inclui as realm roles do usuário no access token",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "false" },
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
       "name": "user.read",
       "description": "Leitura de dados de usuários",
       "protocol": "openid-connect",
-      "attributes": {
-        "include.in.token.scope": "true"
-      },
+      "attributes": { "include.in.token.scope": "true" },
       "protocolMappers": [
         {
           "name": "user.read",
@@ -50,9 +144,7 @@
       "name": "user.write",
       "description": "Criação e atualização de dados de usuários",
       "protocol": "openid-connect",
-      "attributes": {
-        "include.in.token.scope": "true"
-      },
+      "attributes": { "include.in.token.scope": "true" },
       "protocolMappers": [
         {
           "name": "user.write",
@@ -67,8 +159,72 @@
           }
         }
       ]
+    },
+    {
+      "name": "finance.read",
+      "description": "Leitura de dados financeiros",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" },
+      "protocolMappers": [
+        {
+          "name": "finance.read",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "scope",
+            "claim.value": "finance.read",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "finance.write",
+      "description": "Criação e atualização de dados financeiros",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" },
+      "protocolMappers": [
+        {
+          "name": "finance.write",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "scope",
+            "claim.value": "finance.write",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
     }
   ],
-  "users": []
+  "users": [
+    {
+      "username": "service-account-dev-client",
+      "enabled": true,
+      "serviceAccountClientId": "dev-client",
+      "clientRoles": {
+        "realm-management": ["manage-users"]
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "username": "teste",
+      "email": "teste@gmail.com",
+      "firstName": "Usuário",
+      "lastName": "Teste",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "teste",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["USER"]
+    }
+  ]
 }
-

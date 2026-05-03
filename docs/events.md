@@ -11,6 +11,16 @@ Padrão: `<RESOURCE>_<ACTION>` (maiúsculas)
 | USER_CREATED | POST /api/v1/users |
 | USER_UPDATED | PUT /api/v1/users/{id} |
 | USER_DELETED | DELETE /api/v1/users/{id} |
+| PROFILE_UPDATED | PUT /api/v1/profile |
+| PROFILE_PASSWORD_CHANGED | PUT /api/v1/profile/password |
+| FAMILY_CREATED | POST /api/v1/profile/family |
+| FAMILY_INVITATION_REQUESTED | POST /api/v1/profile/family/invitations |
+| FAMILY_INVITATION_APPROVED_BY_TITULAR | PUT /api/v1/profile/family/invitations/{id}/approve |
+| FAMILY_INVITATION_REJECTED_BY_TITULAR | PUT /api/v1/profile/family/invitations/{id}/reject-titular |
+| FAMILY_INVITATION_ACCEPTED | PUT /api/v1/profile/family/invitations/{id}/accept |
+| FAMILY_INVITATION_REJECTED | PUT /api/v1/profile/family/invitations/{id}/reject |
+| FAMILY_MEMBER_REMOVED | DELETE /api/v1/profile/family/members/{id} |
+| FAMILY_MEMBER_UPDATED | PUT /api/v1/profile/family/members/{id} |
 
 ## Eventos de Leitura (opcionais — observabilidade)
 

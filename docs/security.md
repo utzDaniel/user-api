@@ -17,13 +17,17 @@ Fluxo: Cliente → Keycloak (obtém JWT) → gateway-api (valida e roteia) → u
 
 | Endpoint | Acesso |
 |----------|--------|
-| /api/v1/users | ADMIN |
-| /api/v1/users/{id} | Autenticado (próprio usuário ou ADMIN) |
-| /api/v1/users/{id}/roles | ADMIN |
+| /api/v1/users/** | ROLE_ADMIN |
+| /api/v1/profile/** | ROLE_USER ou ROLE_ADMIN |
 | /api/v1/public/** | Público |
 | /swagger-ui/** | Público |
 | /actuator/health | Público |
 | /actuator/info | Público |
+
+## Migração de Segurança
+
+A partir da v2 (2026-05-03) a autorização é baseada em **roles** (`realm_access.roles` do JWT), não mais em scopes.
+O converter custom lê `realm_access.roles` e adiciona o prefixo `ROLE_` para integração com Spring Security `hasRole()`.
 
 ## Erros de Autenticação
 
