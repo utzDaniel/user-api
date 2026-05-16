@@ -45,3 +45,7 @@ CREATE TABLE tb_family_invitation (
     CONSTRAINT fk_invitation_family    FOREIGN KEY (family_id)            REFERENCES tb_family(id),
     CONSTRAINT fk_invitation_requester FOREIGN KEY (requester_profile_id) REFERENCES tb_profile(id)
 );
+
+INSERT INTO tb_profile
+(username, nome_completo, cpf, email, telefone, created_at, updated_at)
+VALUES('admin', 'Usuário Admin', '37856469099', 'admin@gmail.com', '31 99766-1746', getutcdate(), getutcdate());
