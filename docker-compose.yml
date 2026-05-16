@@ -1,39 +1,7 @@
 version: '3.8'
 services:
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2025-latest
-    environment:
-      SA_PASSWORD: "YourStrong!Passw0rd"
-      ACCEPT_EULA: "Y"
-    ports:
-      - "1433:1433"
-    healthcheck:
-      test: ["CMD-SHELL","/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P $${SA_PASSWORD} -Q 'SELECT 1' || exit 1"]
-
-  activemq:
-    image: rmohr/activemq:5.15.9
-    ports:
-      - "61616:61616"
-      - "8161:8161"
-
-  keycloak:
-    image: keycloak/keycloak:26.6
-    command: ["start-dev","--http-port=9999","--import-realm"]
-    volumes:
-      - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
-    environment:
-      KC_HEALTH_ENABLED: "true"
-      KEYCLOAK_ADMIN: "admin"
-      KEYCLOAK_ADMIN_PASSWORD: "admin"
-    ports:
-      - "9999:9999"
-
   app:
     build: .
-    depends_on:
-      - sqlserver
-      - activemq
-      - keycloak
     ports:
       - "8082:8082"
     environment:
