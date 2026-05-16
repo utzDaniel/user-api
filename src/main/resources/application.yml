@@ -1,5 +1,5 @@
 server:
-  port: 8082
+  port: 8081
   error:
     include-message: always
     include-binding-errors: always
@@ -26,7 +26,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_URL:http://localhost:9999}/realms/${KEYCLOAK_REALM:development}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:9999/realms/development}
+          jwk-set-uri: ${KEYCLOAK_JWK_URI:http://localhost:9999/realms/development/protocol/openid-connect/certs}
 
 keycloak:
   admin:
