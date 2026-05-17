@@ -18,7 +18,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-// Testes migrados de scope-based (user.read/write) para role-based (ROLE_ADMIN/ROLE_USER)
 
 @WebMvcTest
 @Import(SecurityConfig.class)

@@ -33,8 +33,8 @@ public class ProfileService {
     @Value("${keycloak.admin.client-secret}")
     private String clientSecret;
 
-    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
-    private String issuerUri;
+    @Value("${keycloak.admin.server-url}")
+    private String keycloakServerUrl;
 
     public ProfileService(ProfileRepository profileRepository,
                           ProfileMapper profileMapper,
@@ -128,7 +128,7 @@ public class ProfileService {
     }
 
     private String obtainAdminToken() {
-        String tokenUrl = issuerUri + "/protocol/openid-connect/token";
+        String tokenUrl = keycloakServerUrl + "/realms/" + realm + "/protocol/openid-connect/token";
         Map<?, ?> response = keycloakAdminRestClient.post()
                 .uri(tokenUrl)
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
@@ -162,7 +162,7 @@ public class ProfileService {
     }
 
     private void validateCurrentPassword(String username, String senhaAtual) {
-        String tokenUrl = issuerUri + "/protocol/openid-connect/token";
+        String tokenUrl = keycloakServerUrl + "/realms/" + realm + "/protocol/openid-connect/token";
         try {
             keycloakAdminRestClient.post()
                     .uri(tokenUrl)

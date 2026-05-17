@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -70,7 +71,7 @@ class ProfileServiceTest {
         ReflectionTestUtils.setField(profileService, "realm", "development");
         ReflectionTestUtils.setField(profileService, "clientId", "user-api");
         ReflectionTestUtils.setField(profileService, "clientSecret", "secret");
-        ReflectionTestUtils.setField(profileService, "issuerUri", "http://localhost:9999/realms/development");
+        ReflectionTestUtils.setField(profileService, "keycloakServerUrl", "http://localhost:9999/realms/development");
 
         jwt = mock(Jwt.class);
         when(jwt.getSubject()).thenReturn("keycloak-uuid-123");
