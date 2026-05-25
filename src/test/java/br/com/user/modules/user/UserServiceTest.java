@@ -146,8 +146,8 @@ class UserServiceTest {
 
         when(keycloakUserDao.findByRealmAndUsername("development", "joao.silva"))
                 .thenReturn(Optional.of(keycloakUserDto));
-        when(keycloakUserDao.existsByEmail("novoemail@email.com"))
-                .thenReturn(Optional.of(true));  // Email existe, mas o orElseThrow verifica se Optional está vazio
+        when(keycloakUserDao.existsByEmail("novoemail2@email.com"))
+                .thenReturn(Optional.empty());
         doNothing().when(keycloakAdminClient).updateUser(anyString(), anyString(), anyString(), anyString(), anyBoolean());
         doNothing().when(eventPublisher).publish(any(EventType.class), anyString(), any());
 
@@ -176,7 +176,7 @@ class UserServiceTest {
         when(keycloakUserDao.findByRealmAndUsername("development", "joao.silva"))
                 .thenReturn(Optional.of(keycloakUserDto));
         when(keycloakUserDao.existsByEmail("emailemuso@email.com"))
-                .thenReturn(Optional.empty());  // orElseThrow lança quando Optional está vazio
+                .thenReturn(Optional.of(true));
 
         // Act & Assert
         ApiException exception = assertThrows(ApiException.class, () -> userService.updateUser(jwt, request));

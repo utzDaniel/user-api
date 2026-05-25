@@ -57,8 +57,9 @@ public class UserService {
 
         boolean emailVerified = user.emailVerified();
         if (!request.email().equals(user.email())) {
-            keycloakUserDao.existsByEmail(request.email())
-                    .orElseThrow(() -> ApiException.badRequest(List.of(new Violacao("email", "E-mail já utilizado"))));
+            if (keycloakUserDao.existsByEmail(request.email()).isPresent()) {
+                throw ApiException.badRequest(List.of(new Violacao("email", "E-mail já utilizado")));
+            }
             emailVerified = false;
         }
 
