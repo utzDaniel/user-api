@@ -1,253 +1,184 @@
 package br.com.user.modules.family;
 
-import br.com.user.modules.family.dto.*;
-import br.com.user.modules.profile.ProfileEntity;
-import br.com.user.modules.profile.ProfileRepository;
-import org.springframework.http.HttpStatus;
+import br.com.user.config.ApiException;
+import br.com.user.config.KeycloakConfig;
+import br.com.user.modules.event.EventPublisher;
+import br.com.user.modules.event.EventType;
+import br.com.user.modules.family.dto.FamilyMemberResponse;
+import br.com.user.modules.family.dto.FamilyResponse;
+import br.com.user.modules.user.KeycloakUserDao;
+import br.com.user.modules.user.dto.KeycloakUserDto;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class FamilyService {
 
     private final FamilyRepository familyRepository;
     private final FamilyMemberRepository familyMemberRepository;
-    private final FamilyInvitationRepository invitationRepository;
-    private final ProfileRepository profileRepository;
-    private final FamilyEventPublisher eventPublisher;
+    private final EventPublisher eventPublisher;
+    private final KeycloakUserDao keycloakUserDao;
+    private final KeycloakConfig keycloakConfig;
+
 
     public FamilyService(FamilyRepository familyRepository,
                          FamilyMemberRepository familyMemberRepository,
-                         FamilyInvitationRepository invitationRepository,
-                         ProfileRepository profileRepository,
-                         FamilyEventPublisher eventPublisher) {
+                         EventPublisher eventPublisher,
+                         KeycloakUserDao keycloakUserDao,
+                         KeycloakConfig keycloakConfig) {
+
         this.familyRepository = familyRepository;
         this.familyMemberRepository = familyMemberRepository;
-        this.invitationRepository = invitationRepository;
-        this.profileRepository = profileRepository;
         this.eventPublisher = eventPublisher;
+        this.keycloakUserDao = keycloakUserDao;
+        this.keycloakConfig = keycloakConfig;
+    }
+
+    private KeycloakUserDto getKeycloakUserDto(Jwt jwt) {
+        return keycloakUserDao
+                .findByRealmAndUsername(keycloakConfig.getRealm(), jwt.getClaimAsString("preferred_username"))
+                .orElseThrow(() -> ApiException.notFound("Perfil não encontrado"));
     }
 
     @Transactional
-    public FamilyResponse createFamily(Long profileId, String nome) {
-        if (familyMemberRepository.existsByProfileId(profileId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Usuário já pertence a uma família");
+    public FamilyResponse createFamily(Jwt jwt, String nome) {
+        KeycloakUserDto user = getKeycloakUserDto(jwt);
+
+        if (user.familyId() != null) {
+            throw ApiException.badRequest("Usuário já pertence a uma família");
         }
 
-        ProfileEntity titular = findProfile(profileId);
-
         FamilyEntity family = FamilyEntity.builder()
-                .titular(titular)
-                .nome(nome)
+                .holderId(user.id())
+                .name(nome)
                 .build();
         family = familyRepository.save(family);
 
         FamilyMemberEntity member = FamilyMemberEntity.builder()
-                .family(family)
-                .profile(titular)
-                .parentesco(ParentescoEnum.TITULAR)
-                .status(FamilyMemberStatusEnum.ATIVO)
+                .familyId(family.getId())
+                .userId(user.id())
                 .build();
+
         familyMemberRepository.save(member);
 
-        eventPublisher.publishFamilyCreated(family.getId(), titular.getUsername());
-        return toFamilyResponse(family);
+        eventPublisher.publish(EventType.FAMILY_CREATED, user.id(), nome);
+
+        return new FamilyResponse(
+                family.getName(),
+                true,
+                List.of(new FamilyMemberResponse(
+                        user.username(),
+                        user.firstName(),
+                        user.lastName(),
+                        user.email(),
+                        user.emailVerified(),
+                        false
+                ))
+        );
     }
 
-    public FamilyResponse getFamily(Long profileId) {
-        FamilyMemberEntity membership = familyMemberRepository.findByProfileId(profileId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Família não encontrada"));
-        return toFamilyResponse(membership.getFamily());
+    public FamilyResponse getFamily(Jwt jwt) {
+        KeycloakUserDto user = getKeycloakUserDto(jwt);
+
+        if (user.familyId() == null) {
+            throw ApiException.notFound("Usuário não pertence a uma família");
+        }
+
+        List<FamilyMemberResponse> membros = keycloakUserDao.findByFamilyId(user.familyId()).stream()
+                .map(u -> new FamilyMemberResponse(
+                        u.username(),
+                        u.firstName(),
+                        u.lastName(),
+                        u.email(),
+                        u.emailVerified(),
+                        isDeleteable(user, u.username())
+                ))
+                .toList();
+
+        return new FamilyResponse(
+                user.familyName(),
+                user.holder(),
+                membros
+        );
     }
 
     @Transactional
-    public FamilyMemberResponse updateFamilyMember(Long callerProfileId, Long memberId, FamilyUpdateMemberRequest request) {
-        FamilyMemberEntity member = familyMemberRepository.findById(memberId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
+    public void removeFamilyMember(Jwt jwt, String username) {
 
-        boolean isTitular = member.getFamily().getTitular().getId().equals(callerProfileId);
-        boolean isOwnRecord = member.getProfile().getId().equals(callerProfileId);
-        if (!isTitular && !isOwnRecord) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado");
+        KeycloakUserDto user = getKeycloakUserDto(jwt);
+
+        if (user.username().equals(username) && user.holder()) {
+            throw ApiException.forbiden("O titular não pode remover a si mesmo");
         }
 
-        if (request.getParentesco() != null) member.setParentesco(request.getParentesco());
-        if (request.getStatus() != null) member.setStatus(request.getStatus());
-
-        FamilyMemberEntity saved = familyMemberRepository.save(member);
-        eventPublisher.publishMemberUpdated(saved.getId(), saved.getProfile().getUsername());
-        return toMemberResponse(saved);
-    }
-
-    @Transactional
-    public void removeFamilyMember(Long callerProfileId, Long memberId) {
-        FamilyMemberEntity member = familyMemberRepository.findById(memberId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
-
-        if (!member.getFamily().getTitular().getId().equals(callerProfileId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Somente o titular pode remover membros");
+        if (!user.username().equals(username) && !user.holder()) {
+            throw ApiException.forbiden("Somente o titular pode remover outros membros");
         }
 
-        String username = member.getProfile().getUsername();
+        FamilyMemberEntity member = familyMemberRepository.findByUsername(username)
+                .orElseThrow(() -> ApiException.notFound("Membro não encontrado"));
+
         familyMemberRepository.delete(member);
-        eventPublisher.publishMemberRemoved(memberId, username);
+
+        eventPublisher.publish(EventType.FAMILY_MEMBER_REMOVED, user.id(), username);
     }
 
     @Transactional
-    public FamilyInvitationResponse requestInvitation(Long profileId, FamilyInvitationSendRequest request) {
-        FamilyMemberEntity membership = familyMemberRepository.findByProfileId(profileId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não pertence a uma família"));
+    public void addFamilyMember(Jwt jwt, String username) {
+        KeycloakUserDto holder = getKeycloakUserDto(jwt);
 
-        ProfileEntity requester = findProfile(profileId);
-
-        FamilyInvitationEntity invitation = FamilyInvitationEntity.builder()
-                .family(membership.getFamily())
-                .requester(requester)
-                .receiverEmail(request.getReceiverEmail())
-                .parentesco(request.getParentesco())
-                .status(InvitationStatusEnum.AGUARDANDO_TITULAR)
-                .build();
-        invitation = invitationRepository.save(invitation);
-
-        eventPublisher.publishInvitationRequested(invitation.getId(), requester.getUsername());
-        return toInvitationResponse(invitation);
-    }
-
-    @Transactional
-    public FamilyInvitationResponse approveInvitation(Long titularProfileId, Long invitationId) {
-        FamilyInvitationEntity invitation = invitationRepository.findById(invitationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Convite não encontrado"));
-
-        if (!invitation.getFamily().getTitular().getId().equals(titularProfileId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Somente o titular pode aprovar convites");
+        if (holder.familyId() == null) {
+            throw ApiException.badRequest("Usuário não pertence a uma família");
         }
 
-        invitation.setStatus(InvitationStatusEnum.PENDENTE);
-        FamilyInvitationEntity saved = invitationRepository.save(invitation);
-
-        eventPublisher.publishInvitationApprovedByTitular(saved.getId(), invitation.getFamily().getTitular().getUsername());
-        return toInvitationResponse(saved);
-    }
-
-    @Transactional
-    public FamilyInvitationResponse rejectInvitationByTitular(Long titularProfileId, Long invitationId) {
-        FamilyInvitationEntity invitation = invitationRepository.findById(invitationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Convite não encontrado"));
-
-        if (!invitation.getFamily().getTitular().getId().equals(titularProfileId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Somente o titular pode recusar convites");
+        if (!holder.holder()) {
+            throw ApiException.forbiden("Somente o titular pode adicionar membros");
         }
 
-        invitation.setStatus(InvitationStatusEnum.RECUSADO);
-        FamilyInvitationEntity saved = invitationRepository.save(invitation);
+        KeycloakUserDto newMember = keycloakUserDao
+                .findByRealmAndUsername(keycloakConfig.getRealm(), username)
+                .orElseThrow(() -> ApiException.notFound("Usuário não encontrado"));
 
-        eventPublisher.publishInvitationRejectedByTitular(saved.getId(), invitation.getFamily().getTitular().getUsername());
-        return toInvitationResponse(saved);
-    }
-
-    public List<FamilyInvitationResponse> listReceivedInvitations(String email) {
-        return invitationRepository
-                .findAllByReceiverEmailAndStatus(email, InvitationStatusEnum.PENDENTE)
-                .stream().map(this::toInvitationResponse).collect(Collectors.toList());
-    }
-
-    public List<FamilyInvitationResponse> listSentInvitations(Long familyId) {
-        return invitationRepository.findAllByFamilyId(familyId)
-                .stream().map(this::toInvitationResponse).collect(Collectors.toList());
-    }
-
-    @Transactional
-    public FamilyInvitationResponse acceptInvitation(Long invitationId, Long receiverProfileId) {
-        FamilyInvitationEntity invitation = invitationRepository.findById(invitationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Convite não encontrado"));
-
-        if (invitation.getStatus() != InvitationStatusEnum.PENDENTE) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Convite não está pendente");
+        if (newMember.familyId() != null) {
+            throw ApiException.badRequest("Usuário já pertence a uma família");
         }
-
-        if (familyMemberRepository.existsByProfileId(receiverProfileId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Usuário já pertence a uma família");
-        }
-
-        ProfileEntity receiver = findProfile(receiverProfileId);
 
         FamilyMemberEntity member = FamilyMemberEntity.builder()
-                .family(invitation.getFamily())
-                .profile(receiver)
-                .parentesco(invitation.getParentesco())
-                .status(FamilyMemberStatusEnum.ATIVO)
+                .familyId(holder.familyId())
+                .userId(newMember.id())
                 .build();
+
         familyMemberRepository.save(member);
 
-        invitation.setStatus(InvitationStatusEnum.ACEITO);
-        FamilyInvitationEntity saved = invitationRepository.save(invitation);
-
-        eventPublisher.publishInvitationAccepted(saved.getId(), receiver.getUsername());
-        return toInvitationResponse(saved);
+        eventPublisher.publish(EventType.FAMILY_MEMBER_ADDED, holder.id(), username);
     }
 
     @Transactional
-    public FamilyInvitationResponse rejectInvitation(Long invitationId, Long receiverProfileId) {
-        FamilyInvitationEntity invitation = invitationRepository.findById(invitationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Convite não encontrado"));
+    public void deleteFamily(Jwt jwt) {
+        KeycloakUserDto user = getKeycloakUserDto(jwt);
 
-        ProfileEntity receiver = findProfile(receiverProfileId);
+        if (user.familyId() == null) {
+            throw ApiException.badRequest("Usuário não pertence a uma família");
+        }
 
-        invitation.setStatus(InvitationStatusEnum.RECUSADO);
-        FamilyInvitationEntity saved = invitationRepository.save(invitation);
+        if (!user.holder()) {
+            throw ApiException.forbiden("Somente o titular pode remover a família");
+        }
 
-        eventPublisher.publishInvitationRejected(saved.getId(), receiver.getUsername());
-        return toInvitationResponse(saved);
+        familyRepository.findById(user.familyId())
+                .orElseThrow(() -> ApiException.notFound("Família não encontrada"));
+
+        familyMemberRepository.deleteByFamilyId(user.familyId());
+
+        familyRepository.deleteById(user.familyId());
+
+        eventPublisher.publish(EventType.FAMILY_DELETED, user.id(), user.familyName());
     }
 
-    // ── helpers ──────────────────────────────────────────────────────────────
-
-    private ProfileEntity findProfile(Long profileId) {
-        return profileRepository.findById(profileId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Perfil não encontrado"));
-    }
-
-    private FamilyResponse toFamilyResponse(FamilyEntity family) {
-        List<FamilyMemberEntity> members = familyMemberRepository.findAllByFamilyId(family.getId());
-        FamilyMemberResponse titularResponse = members.stream()
-                .filter(m -> m.getParentesco() == ParentescoEnum.TITULAR)
-                .findFirst()
-                .map(this::toMemberResponse)
-                .orElse(null);
-        List<FamilyMemberResponse> outros = members.stream()
-                .filter(m -> m.getParentesco() != ParentescoEnum.TITULAR)
-                .map(this::toMemberResponse)
-                .collect(Collectors.toList());
-        return FamilyResponse.builder()
-                .id(family.getId())
-                .nome(family.getNome())
-                .titular(titularResponse)
-                .membros(outros)
-                .build();
-    }
-
-    private FamilyMemberResponse toMemberResponse(FamilyMemberEntity m) {
-        return FamilyMemberResponse.builder()
-                .id(m.getId())
-                .nomeCompleto(m.getProfile().getNomeCompleto())
-                .email(m.getProfile().getEmail())
-                .parentesco(m.getParentesco())
-                .status(m.getStatus())
-                .build();
-    }
-
-    private FamilyInvitationResponse toInvitationResponse(FamilyInvitationEntity inv) {
-        return FamilyInvitationResponse.builder()
-                .id(inv.getId())
-                .requesterNome(inv.getRequester().getNomeCompleto())
-                .receiverEmail(inv.getReceiverEmail())
-                .parentesco(inv.getParentesco())
-                .status(inv.getStatus())
-                .createdAt(inv.getCreatedAt())
-                .build();
+    private boolean isDeleteable(KeycloakUserDto user, String username) {
+        return user.holder() != user.username().equals(username);
     }
 }

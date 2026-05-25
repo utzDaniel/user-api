@@ -4,14 +4,14 @@ services:
     build: .
     ports:
       - "8081:8081"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      DB_URL: jdbc:sqlserver://sqlserver:1433;databaseName=user;encrypt=true;trustServerCertificate=true
+      DB_URL: jdbc:sqlserver://host.docker.internal:1433;databaseName=keycloak;encrypt=true;trustServerCertificate=true
       DB_USER: sa
       DB_PASSWORD: YourStrong!Passw0rd
-      ACTIVEMQ_URL: tcp://activemq:61616
-      KEYCLOAK_URL: http://localhost:9999
+      ACTIVEMQ_URL: tcp://host.docker.internal:61616
+      KEYCLOAK_URL: http://host.docker.internal:9999
       KEYCLOAK_REALM: development
-      KEYCLOAK_ISSUER_URI: http://localhost:9999/realms/development
-      KEYCLOAK_JWK_URI: http://localhost:9999/realms/development/protocol/openid-connect/certs
-      KEYCLOAK_ADMIN_CLIENT_ID: dev-client
-      KEYCLOAK_ADMIN_CLIENT_SECRET: change-me
+      KEYCLOAK_CLIENT_ID: dev-client
+      KEYCLOAK_CLIENT_SECRET: change-me

@@ -1,15 +1,21 @@
 package br.com.user.modules.family;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface FamilyMemberRepository extends JpaRepository<FamilyMemberEntity, Long> {
 
-    boolean existsByProfileId(Long profileId);
+    @Query(value = "SELECT fm.* FROM FAMILY_MEMBER fm " +
+            "INNER JOIN USER_ENTITY u ON fm.USER_ID = u.ID " +
+            "WHERE u.USERNAME = :username", nativeQuery = true)
+    Optional<FamilyMemberEntity> findByUsername(@Param("username") String username);
 
-    Optional<FamilyMemberEntity> findByProfileId(Long profileId);
+    @Modifying
+    @Query(value = "DELETE FROM FAMILY_MEMBER WHERE FAMILY_ID = :familyId", nativeQuery = true)
+    void deleteByFamilyId(@Param("familyId") Long familyId);
 
-    List<FamilyMemberEntity> findAllByFamilyId(Long familyId);
 }

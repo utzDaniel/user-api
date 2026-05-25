@@ -1,6 +1,5 @@
 package br.com.user.modules.family;
 
-import br.com.user.modules.profile.ProfileEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,7 +10,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
 @Entity
-@Table(name = "tb_family_member")
+@Table(name = "FAMILY_MEMBER")
 @Data
 @Builder
 @NoArgsConstructor
@@ -22,23 +21,13 @@ public class FamilyMemberEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "family_id", nullable = false)
-    private FamilyEntity family;
+    @Column(name = "FAMILY_ID", nullable = false)
+    private Long familyId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "profile_id", nullable = false, unique = true)
-    private ProfileEntity profile;
+    @Column(name = "USER_ID", nullable = false, unique = true, length = 36)
+    private String userId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "parentesco", nullable = false)
-    private ParentescoEnum parentesco;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private FamilyMemberStatusEnum status;
-
-    @Column(name = "joined_at", nullable = false, updatable = false)
+    @Column(name = "JOINED_AT", nullable = false, updatable = false)
     private LocalDateTime joinedAt;
 
     @PrePersist

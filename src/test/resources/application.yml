@@ -8,15 +8,9 @@ spring:
     enabled: false
   activemq:
     broker-url: vm://localhost?broker.persistent=false
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://mock-keycloak/realms/development
 
 keycloak:
-  admin:
-    server-url: http://mock-keycloak
-    realm: development
-    client-id: user-api
-    client-secret: test-secret
+  url: http://mock-keycloak
+  realm: development
+  client-id: user-api
+  client-secret: test-secret

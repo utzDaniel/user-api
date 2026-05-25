@@ -18,8 +18,8 @@
   ],
   "tags": [
     {
-      "name": "Profile",
-      "description": "Gerenciamento do perfil do usuário autenticado"
+      "name": "User",
+      "description": "Gerenciamento do usuário autenticado"
     },
     {
       "name": "Family",
@@ -27,78 +27,111 @@
     }
   ],
   "paths": {
-    "/api/v1/profile": {
+    "/api/v1/user": {
       "get": {
-        "tags": ["Profile"],
-        "summary": "Obtém o perfil do usuário autenticado",
-        "description": "Retorna os dados do perfil. Se ainda não existir, provisiona automaticamente a partir das claims do JWT.",
-        "operationId": "getProfile",
+        "tags": [
+          "User"
+        ],
+        "summary": "Obtém informações do usuário autenticado",
+        "description": "Retorna os informações do usuario.",
+        "operationId": "getUser",
         "responses": {
           "200": {
-            "description": "Perfil retornado com sucesso",
+            "description": "Usuario retornado com sucesso",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ProfileResponse" },
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                },
                 "example": {
-                  "cpf": "123.456.789-00",
+                  "nome": "João",
+                  "sobrenome": "Silva",
                   "email": "joao@email.com",
-                  "nomeCompleto": "João Silva",
-                  "telefone": "11999999999"
+                  "emailVerificado": true
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
         }
       },
       "put": {
-        "tags": ["Profile"],
-        "summary": "Atualiza o perfil do usuário autenticado",
-        "description": "Atualiza nomeCompleto, cpf, email e telefone. Sincroniza nome e email com o Keycloak via Admin API. Publica o evento PROFILE_UPDATED.",
-        "operationId": "updateProfile",
+        "tags": [
+          "User"
+        ],
+        "summary": "Atualiza o usuário autenticado",
+        "description": "Atualiza nome, sobrenome e email.",
+        "operationId": "updateUser",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/ProfileUpdateRequest" },
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdateRequest"
+              },
               "example": {
-                "nomeCompleto": "João Silva",
-                "cpf": "123.456.789-00",
-                "email": "joao@email.com",
-                "telefone": "11999999999"
+                "nome": "João",
+                "sobrenome": "Silva",
+                "email": "joao@email.com"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Perfil atualizado com sucesso",
+            "description": "Usuario atualizado com sucesso",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ProfileResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
               }
             }
           },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "502": { "$ref": "#/components/responses/BadGateway" }
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
+          }
         }
       }
     },
-    "/api/v1/profile/password": {
+    "/api/v1/user/password": {
       "put": {
-        "tags": ["Profile"],
+        "tags": [
+          "User"
+        ],
         "summary": "Altera a senha do usuário autenticado",
-        "description": "Valida a senha atual via ROPC e redefine a nova senha via Admin API do Keycloak. Publica o evento PROFILE_PASSWORD_CHANGED.",
+        "description": "Valida a senha atual via ROPC e redefine a nova senha via Admin API do Keycloak.",
         "operationId": "changePassword",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/PasswordChangeRequest" },
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeRequest"
+              },
               "example": {
                 "senhaAtual": "senhaAntiga123",
                 "novaSenha": "novaSenha456",
@@ -108,26 +141,94 @@
           }
         },
         "responses": {
-          "204": { "description": "Senha alterada com sucesso" },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "502": { "$ref": "#/components/responses/BadGateway" }
+          "204": {
+            "description": "Senha alterada com sucesso"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
+          }
         }
       }
     },
-    "/api/v1/profile/family": {
+    "/api/v1/user/lista": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Lista usuários sem vínculo com família",
+        "description": "Retorna uma lista de usuários que não pertencem a nenhuma família, disponíveis para serem adicionados.",
+        "operationId": "getUsersWithoutFamily",
+        "responses": {
+          "200": {
+            "description": "Lista de usuários retornada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FamilyMemberResponse"
+                  }
+                },
+                "example": [
+                  {
+                    "username": "maria123",
+                    "nome": "Maria",
+                    "sobrenome": "Santos",
+                    "email": "maria@email.com",
+                    "emailVerified": true,
+                    "ehDeletavel": true
+                  },
+                  {
+                    "username": "pedro456",
+                    "nome": "Pedro",
+                    "sobrenome": "Oliveira",
+                    "email": "pedro@email.com",
+                    "emailVerified": false,
+                    "ehDeletavel": true
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/user/family": {
       "post": {
-        "tags": ["Family"],
+        "tags": [
+          "Family"
+        ],
         "summary": "Cria uma família",
-        "description": "Cria uma nova família e adiciona o usuário autenticado como TITULAR. Publica o evento FAMILY_CREATED.",
+        "description": "Cria uma nova família e adiciona o usuário autenticado como TITULAR.",
         "operationId": "createFamily",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/CreateFamilyRequest" },
-              "example": { "nome": "Família Silva" }
+              "schema": {
+                "$ref": "#/components/schemas/CreateFamilyRequest"
+              },
+              "example": {
+                "nome": "Família Silva"
+              }
             }
           }
         },
@@ -136,16 +237,30 @@
             "description": "Família criada",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/FamilyResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/FamilyResponse"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "409": { "$ref": "#/components/responses/Conflict" }
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
+          }
         }
       },
       "get": {
-        "tags": ["Family"],
+        "tags": [
+          "Family"
+        ],
         "summary": "Obtém a família do usuário autenticado",
         "operationId": "getFamily",
         "responses": {
@@ -153,230 +268,117 @@
             "description": "Família retornada",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/FamilyResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/FamilyResponse"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/api/v1/profile/family/members/{id}": {
-      "put": {
-        "tags": ["Family"],
-        "summary": "Atualiza dados de um membro da família",
-        "description": "Atualiza parentesco e status de um membro. Somente o titular ou o próprio membro podem alterar. Publica FAMILY_MEMBER_UPDATED.",
-        "operationId": "updateFamilyMember",
-        "parameters": [
-          { "$ref": "#/components/parameters/memberId" }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/FamilyUpdateMemberRequest" }
-            }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
           }
-        },
-        "responses": {
-          "200": {
-            "description": "Membro atualizado",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/FamilyMemberResponse" }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "404": { "$ref": "#/components/responses/NotFound" }
         }
       },
       "delete": {
-        "tags": ["Family"],
-        "summary": "Remove um membro da família",
-        "description": "Somente o TITULAR pode remover membros. Publica FAMILY_MEMBER_REMOVED.",
-        "operationId": "removeFamilyMember",
-        "parameters": [
-          { "$ref": "#/components/parameters/memberId" }
+        "tags": [
+          "Family"
         ],
+        "summary": "Remove a família completa",
+        "description": "Remove a família e todos os vínculos dos membros. Apenas o titular pode executar esta ação.",
+        "operationId": "deleteFamily",
         "responses": {
-          "204": { "description": "Membro removido" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "204": {
+            "description": "Família removida com sucesso"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
+          }
         }
       }
     },
-    "/api/v1/profile/family/invitations": {
+    "/api/v1/user/family/members/{username}": {
       "post": {
-        "tags": ["Family"],
-        "summary": "Solicita um convite",
-        "description": "Qualquer membro pode solicitar. Status inicial: AGUARDANDO_TITULAR. Publica FAMILY_INVITATION_REQUESTED.",
-        "operationId": "requestInvitation",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/FamilyInvitationSendRequest" },
-              "example": {
-                "receiverEmail": "maria@email.com",
-                "parentesco": "CONJUGE"
-              }
-            }
+        "tags": [
+          "Family"
+        ],
+        "summary": "Adiciona um novo membro à família",
+        "description": "Adiciona um usuário sem vínculo familiar à família do usuário autenticado. Apenas o titular pode adicionar membros.",
+        "operationId": "addFamilyMember",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/username"
           }
-        },
+        ],
         "responses": {
           "201": {
-            "description": "Convite solicitado",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/FamilyInvitationResponse" }
-              }
-            }
+            "description": "Membro adicionado com sucesso"
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/api/v1/profile/family/invitations/received": {
-      "get": {
-        "tags": ["Family"],
-        "summary": "Lista convites recebidos",
-        "description": "Lista convites com status PENDENTE recebidos pelo e-mail do usuário autenticado.",
-        "operationId": "listReceivedInvitations",
-        "responses": {
-          "200": {
-            "description": "Lista de convites recebidos",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/FamilyInvitationResponse" }
-                }
-              }
-            }
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
-        }
-      }
-    },
-    "/api/v1/profile/family/invitations/sent": {
-      "get": {
-        "tags": ["Family"],
-        "summary": "Lista convites enviados",
-        "description": "Lista todos os convites enviados pela família do usuário autenticado.",
-        "operationId": "listSentInvitations",
-        "responses": {
-          "200": {
-            "description": "Lista de convites enviados",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/FamilyInvitationResponse" }
-                }
-              }
-            }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
+          }
         }
-      }
-    },
-    "/api/v1/profile/family/invitations/{id}/approve": {
-      "put": {
-        "tags": ["Family"],
-        "summary": "Titular aprova convite",
-        "description": "Muda status de AGUARDANDO_TITULAR para PENDENTE. Publica FAMILY_INVITATION_APPROVED_BY_TITULAR.",
-        "operationId": "approveInvitation",
+      },
+      "delete": {
+        "tags": [
+          "Family"
+        ],
+        "summary": "Remove um membro da família",
+        "description": "Remove um membro da família do usuário autenticado.",
+        "operationId": "removeFamilyMember",
         "parameters": [
-          { "$ref": "#/components/parameters/invitationId" }
+          {
+            "$ref": "#/components/parameters/username"
+          }
         ],
         "responses": {
-          "200": {
-            "description": "Convite aprovado",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/FamilyInvitationResponse" }
-              }
-            }
+          "204": {
+            "description": "Membro removido com sucesso"
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/api/v1/profile/family/invitations/{id}/reject-titular": {
-      "put": {
-        "tags": ["Family"],
-        "summary": "Titular recusa convite",
-        "description": "Titular rejeita o convite antes de enviar ao destinatário. Publica FAMILY_INVITATION_REJECTED_BY_TITULAR.",
-        "operationId": "rejectInvitationByTitular",
-        "parameters": [
-          { "$ref": "#/components/parameters/invitationId" }
-        ],
-        "responses": {
-          "200": {
-            "description": "Convite recusado pelo titular",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/FamilyInvitationResponse" }
-              }
-            }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/api/v1/profile/family/invitations/{id}/accept": {
-      "put": {
-        "tags": ["Family"],
-        "summary": "Destinatário aceita convite",
-        "description": "Aceita um convite PENDENTE e adiciona o usuário à família. Publica FAMILY_INVITATION_ACCEPTED.",
-        "operationId": "acceptInvitation",
-        "parameters": [
-          { "$ref": "#/components/parameters/invitationId" }
-        ],
-        "responses": {
-          "200": {
-            "description": "Convite aceito",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/FamilyInvitationResponse" }
-              }
-            }
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "409": { "$ref": "#/components/responses/Conflict" }
-        }
-      }
-    },
-    "/api/v1/profile/family/invitations/{id}/reject": {
-      "put": {
-        "tags": ["Family"],
-        "summary": "Destinatário recusa convite",
-        "description": "Destinatário rejeita um convite PENDENTE. Publica FAMILY_INVITATION_REJECTED.",
-        "operationId": "rejectInvitation",
-        "parameters": [
-          { "$ref": "#/components/parameters/invitationId" }
-        ],
-        "responses": {
-          "200": {
-            "description": "Convite recusado",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/FamilyInvitationResponse" }
-              }
-            }
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
+          }
         }
       }
     }
@@ -391,37 +393,60 @@
       }
     },
     "parameters": {
-      "memberId": {
-        "name": "id",
+      "username": {
+        "name": "username",
         "in": "path",
         "required": true,
-        "description": "ID do membro da família",
-        "schema": { "type": "integer", "format": "int64", "example": 1 }
-      },
-      "invitationId": {
-        "name": "id",
-        "in": "path",
-        "required": true,
-        "description": "ID do convite",
-        "schema": { "type": "integer", "format": "int64", "example": 1 }
+        "description": "Username do usuário",
+        "schema": {
+          "type": "string",
+          "description": "Username do usuário",
+          "example": "joaosilva"
+        }
       }
     },
     "responses": {
       "BadRequest": {
-        "description": "Dados inválidos",
+        "description": "Requisição Inválida",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-            "example": { "status": 400, "error": "Bad Request", "message": "As senhas não conferem" }
+            "schema": {
+              "$ref": "#/components/schemas/ErrorViolacaoResponse"
+            },
+            "example": {
+              "status": 400,
+              "error": "Requisição Inválida",
+              "timestamp": "2026-05-03T19:00:00.000Z",
+              "path": "/api/v1/user/password",
+              "violacoes": [
+                  {
+                    "campo": "novaSenha",
+                    "razao": "Nova Senha diferente da confirmação"
+                  },
+                  {
+                    "campo": "confirmarNovaSenha",
+                    "razao": "Confirmação de senha diferente da nova senha"
+                  }
+              ],
+                "message": "Requisição contém erro de negócio."
+            }
           }
         }
       },
       "Unauthorized": {
-        "description": "Token ausente ou inválido",
+        "description": "Falha na autenticação. Token ausente, inválido ou expirado",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-            "example": { "status": 401, "error": "Unauthorized", "message": "Token ausente ou inválido" }
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "status": 401,
+              "error": "Não autorizado",
+              "message": "Falha na autenticação. Token ausente, inválido ou expirado",
+              "timestamp": "2026-05-03T19:00:00.000Z",
+              "path": "/api/v1/user"
+            }
           }
         }
       },
@@ -429,26 +454,50 @@
         "description": "Acesso negado",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-            "example": { "status": 403, "error": "Forbidden", "message": "Acesso negado" }
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "status": 403,
+              "error": "Acesso negado",
+              "message": "Você não tem permissão para acessar este recurso",
+              "timestamp": "2026-05-03T19:00:00.000Z",
+              "path": "/api/v1/user"
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Erro interno do servidor",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "timestamp": "2026-05-03T19:00:00.000Z",
+              "status": 500,
+              "error": "Erro interno do servidor",
+              "message": "Ocorreu um erro inesperado. Por favor, tente novamente mais tarde",
+              "path": "/api/v1/user"
+            }
           }
         }
       },
       "NotFound": {
-        "description": "Recurso não encontrado",
+        "description": "Não Encontrado",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-            "example": { "status": 404, "error": "Not Found", "message": "Recurso não encontrado" }
-          }
-        }
-      },
-      "Conflict": {
-        "description": "Conflito de estado",
-        "content": {
-          "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-            "example": { "status": 409, "error": "Conflict", "message": "Usuário já pertence a uma família" }
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "status": 404,
+              "error": "Não Encontrado",
+              "message": "Objeto não encontrado",
+              "timestamp": "2026-05-03T19:00:00.000Z",
+              "path": "/api/v1/user"
+            }
           }
         }
       },
@@ -456,122 +505,250 @@
         "description": "Falha ao comunicar com o Keycloak",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
-            "example": { "status": 502, "error": "Bad Gateway", "message": "Falha ao sincronizar dados com Keycloak" }
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "status": 502,
+              "error": "Erro no keycloak",
+              "message": "Não foi possível obter token do Keycloak",
+              "timestamp": "2026-05-03T19:00:00.000Z",
+              "path": "/api/v1/user"
+            }
           }
         }
       }
     },
     "schemas": {
-      "ProfileResponse": {
+      "UserResponse": {
         "type": "object",
         "properties": {
-          "cpf":          { "type": "string", "description": "CPF do usuário no formato 000.000.000-00", "example": "123.456.789-00" },
-          "email":        { "type": "string", "format": "email", "description": "Endereço de e-mail do usuário", "example": "joao@email.com" },
-          "nomeCompleto": { "type": "string", "description": "Nome completo do usuário", "example": "João Silva" },
-          "telefone":     { "type": "string", "description": "Telefone do usuário com DDD", "example": "11999999999" }
+          "nome": {
+            "type": "string",
+            "description": "Primeiro nome do usuário",
+            "example": "João"
+          },
+          "sobrenome": {
+            "type": "string",
+            "description": "Sobrenome do usuário",
+            "example": "Silva"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Endereço de e-mail do usuário",
+            "example": "joao@email.com"
+          },
+          "emailVerificado": {
+            "type": "boolean",
+            "description": "Indica se o e-mail do usuário foi verificado",
+            "example": true
+          }
         }
       },
-      "ProfileUpdateRequest": {
+      "UserUpdateRequest": {
         "type": "object",
+        "required": [
+          "nome",
+          "sobrenome",
+          "email"
+        ],
         "properties": {
-          "nomeCompleto": { "type": "string", "description": "Nome completo do usuário. Sincronizado com o Keycloak.", "example": "João Silva" },
-          "cpf":          { "type": "string", "description": "CPF do usuário no formato 000.000.000-00", "example": "123.456.789-00" },
-          "email":        { "type": "string", "format": "email", "description": "E-mail do usuário. Sincronizado com o Keycloak.", "example": "joao@email.com" },
-          "telefone":     { "type": "string", "description": "Telefone do usuário com DDD", "example": "11999999999" }
+          "nome": {
+            "type": "string",
+            "description": "Primeiro nome do usuário",
+            "example": "João"
+          },
+          "sobrenome": {
+            "type": "string",
+            "description": "Sobrenome do usuário",
+            "example": "Silva"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Endereço de e-mail do usuário",
+            "example": "joao@email.com"
+          }
         }
       },
       "PasswordChangeRequest": {
         "type": "object",
-        "required": ["senhaAtual", "novaSenha", "confirmarNovaSenha"],
+        "required": [
+          "senhaAtual",
+          "novaSenha",
+          "confirmarNovaSenha"
+        ],
         "properties": {
-          "senhaAtual":         { "type": "string", "description": "Senha atual do usuário, validada via ROPC no Keycloak", "example": "senhaAntiga123" },
-          "novaSenha":          { "type": "string", "description": "Nova senha desejada", "example": "novaSenha456" },
-          "confirmarNovaSenha": { "type": "string", "description": "Confirmação da nova senha, deve ser idêntica a novaSenha", "example": "novaSenha456" }
+          "senhaAtual": {
+            "type": "string",
+            "description": "Senha atual do usuário",
+            "example": "senhaAntiga123"
+          },
+          "novaSenha": {
+            "type": "string",
+            "description": "Nova senha desejada",
+            "example": "novaSenha456"
+          },
+          "confirmarNovaSenha": {
+            "type": "string",
+            "description": "Confirmação da nova senha, deve ser idêntica a novaSenha",
+            "example": "novaSenha456"
+          }
         }
       },
       "CreateFamilyRequest": {
         "type": "object",
-        "required": ["nome"],
+        "required": [
+          "nome"
+        ],
         "properties": {
-          "nome": { "type": "string", "description": "Nome da família", "example": "Família Silva" }
+          "nome": {
+            "type": "string",
+            "description": "Nome da família",
+            "example": "Família Silva"
+          }
         }
       },
       "FamilyResponse": {
         "type": "object",
         "properties": {
-          "id":      { "type": "integer", "format": "int64", "description": "Identificador único da família", "example": 1 },
-          "nome":    { "type": "string", "description": "Nome da família", "example": "Família Silva" },
-          "titular": { "$ref": "#/components/schemas/FamilyMemberResponse", "description": "Membro titular da família" },
+          "nome": {
+            "type": "string",
+            "description": "Nome da família",
+            "example": "Família Silva"
+          },
+          "titular": {
+            "type": "boolean",
+            "description": "Indica se o usuário autenticado é o titular da família",
+            "example": true
+          },
           "membros": {
             "type": "array",
-            "description": "Lista de membros da família, excluindo o titular",
-            "items": { "$ref": "#/components/schemas/FamilyMemberResponse" }
+            "description": "Lista de membros da família, incluindo o titular",
+            "items": {
+              "$ref": "#/components/schemas/FamilyMemberResponse"
+            }
           }
         }
       },
       "FamilyMemberResponse": {
         "type": "object",
         "properties": {
-          "id":           { "type": "integer", "format": "int64", "description": "Identificador único do membro", "example": 1 },
-          "nomeCompleto": { "type": "string", "description": "Nome completo do membro", "example": "João Silva" },
-          "email":        { "type": "string", "format": "email", "description": "E-mail do membro", "example": "joao@email.com" },
-          "parentesco":   { "allOf": [{ "$ref": "#/components/schemas/ParentescoEnum" }], "description": "Grau de parentesco do membro em relação ao titular" },
-          "status":       { "allOf": [{ "$ref": "#/components/schemas/FamilyMemberStatusEnum" }], "description": "Situação atual do membro na família" }
+          "username": {
+            "type": "string",
+            "description": "Username do membro da família",
+            "example": "joaosilva"
+          },
+          "nome": {
+            "type": "string",
+            "description": "Primeiro nome do membro",
+            "example": "João"
+          },
+          "sobrenome": {
+            "type": "string",
+            "description": "Sobrenome do membro",
+            "example": "Silva"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "E-mail do membro",
+            "example": "joao@email.com"
+          },
+          "emailVerified": {
+            "type": "boolean",
+            "description": "Indica se o e-mail do membro foi verificado",
+            "example": true
+          },
+          "ehDeletavel": {
+            "type": "boolean",
+            "description": "Indica se o membro pode ser removido da família",
+            "example": true
+          }
         }
-      },
-      "FamilyUpdateMemberRequest": {
-        "type": "object",
-        "properties": {
-          "parentesco": { "allOf": [{ "$ref": "#/components/schemas/ParentescoEnum" }], "description": "Novo grau de parentesco do membro" },
-          "status":     { "allOf": [{ "$ref": "#/components/schemas/FamilyMemberStatusEnum" }], "description": "Novo status do membro" }
-        }
-      },
-      "FamilyInvitationSendRequest": {
-        "type": "object",
-        "required": ["receiverEmail", "parentesco"],
-        "properties": {
-          "receiverEmail": { "type": "string", "format": "email", "description": "E-mail do destinatário do convite", "example": "maria@email.com" },
-          "parentesco":    { "allOf": [{ "$ref": "#/components/schemas/ParentescoEnum" }], "description": "Grau de parentesco do convidado em relação ao titular" }
-        }
-      },
-      "FamilyInvitationResponse": {
-        "type": "object",
-        "properties": {
-          "id":            { "type": "integer", "format": "int64", "description": "Identificador único do convite", "example": 1 },
-          "requesterNome": { "type": "string", "description": "Nome do membro que solicitou o convite", "example": "João Silva" },
-          "receiverEmail": { "type": "string", "format": "email", "description": "E-mail do destinatário do convite", "example": "maria@email.com" },
-          "parentesco":    { "allOf": [{ "$ref": "#/components/schemas/ParentescoEnum" }], "description": "Grau de parentesco do convidado" },
-          "status":        { "allOf": [{ "$ref": "#/components/schemas/InvitationStatusEnum" }], "description": "Status atual do convite" },
-          "createdAt":     { "type": "string", "format": "date-time", "description": "Data e hora de criação do convite em UTC", "example": "2026-05-03T19:00:00Z" }
-        }
-      },
-      "ParentescoEnum": {
-        "type": "string",
-        "description": "Grau de parentesco do membro em relação ao titular da família",
-        "enum": ["TITULAR", "CONJUGE", "FILHO", "FILHA", "PAI", "MAE", "IRMAO", "IRMA", "OUTRO"],
-        "example": "CONJUGE"
-      },
-      "FamilyMemberStatusEnum": {
-        "type": "string",
-        "description": "Situação do membro na família",
-        "enum": ["ATIVO", "INATIVO"],
-        "example": "ATIVO"
-      },
-      "InvitationStatusEnum": {
-        "type": "string",
-        "description": "Status do fluxo de convite: AGUARDANDO_TITULAR (aguarda aprovação do titular), PENDENTE (aguarda aceite do destinatário), ACEITO, RECUSADO",
-        "enum": ["AGUARDANDO_TITULAR", "PENDENTE", "ACEITO", "RECUSADO"],
-        "example": "PENDENTE"
       },
       "ErrorResponse": {
         "type": "object",
         "properties": {
-          "timestamp": { "type": "string", "format": "date-time", "description": "Data e hora do erro em UTC" },
-          "status":    { "type": "integer", "description": "Código HTTP do erro", "example": 400 },
-          "error":     { "type": "string", "description": "Descrição resumida do erro HTTP", "example": "Bad Request" },
-          "message":   { "type": "string", "description": "Mensagem detalhada do erro", "example": "Mensagem de erro" },
-          "path":      { "type": "string", "description": "Caminho do endpoint que gerou o erro", "example": "/api/v1/profile" }
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data e hora do erro em UTC",
+            "example": "2026-05-03T19:00:00.000Z"
+          },
+          "status": {
+            "type": "integer",
+            "description": "Código HTTP do erro",
+            "example": 400
+          },
+          "error": {
+            "type": "string",
+            "description": "Descrição resumida do erro HTTP",
+            "example": "Bad Request"
+          },
+          "message": {
+            "type": "string",
+            "description": "Mensagem detalhada do erro",
+            "example": "Mensagem de erro"
+          },
+          "path": {
+            "type": "string",
+            "description": "Caminho do endpoint que gerou o erro",
+            "example": "/api/v1/user"
+          }
+        }
+      },
+      "ErrorViolacaoResponse": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data e hora do erro em UTC"
+          },
+          "status": {
+            "type": "integer",
+            "description": "Código HTTP do erro",
+            "example": 400
+          },
+          "error": {
+            "type": "string",
+            "description": "Descrição resumida do erro HTTP",
+            "example": "Bad Request"
+          },
+          "violacoes": {
+            "type": "array",
+            "description": "Lista de violações de regras de negócio que causaram o erro",
+            "items": {
+              "$ref": "#/components/schemas/ViolacaoResponse"
+            }
+          },
+          "path": {
+            "type": "string",
+            "description": "Caminho do endpoint que gerou o erro",
+            "example": "/api/v1/user"
+          },
+          "message": {
+            "type": "string",
+            "description": "Mensagem detalhada do erro",
+            "example": "Mensagem de erro"
+          }
+        }
+      },
+      "ViolacaoResponse": {
+        "type": "object",
+        "properties": {
+          "campo": {
+            "type": "string",
+            "description": "Campo que violou a regra de negócio",
+            "example": "novaSenha"
+          },
+          "razao": {
+            "type": "string",
+            "description": "Razão da violação de regra de negócio",
+            "example": "Nova Senha diferente da confirmação"
+          }
         }
       }
     }

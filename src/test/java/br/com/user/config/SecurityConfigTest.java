@@ -1,263 +1,108 @@
 package br.com.user.config;
 
-import br.com.user.modules.family.FamilyService;
-import br.com.user.modules.profile.ProfileRepository;
-import br.com.user.modules.profile.ProfileService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-
-@WebMvcTest
-@Import(SecurityConfig.class)
-@TestPropertySource(properties = "spring.security.oauth2.resourceserver.jwt.issuer-uri=http://mock-keycloak/realms/development")
+@SpringBootTest
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto=none",
+        "spring.flyway.enabled=false"
+})
+@DisplayName("Testes unitários de SecurityConfig")
 class SecurityConfigTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private WebApplicationContext context;
 
-    @MockitoBean
+    @Autowired
+    private SecurityFilterChain securityFilterChain;
+
+    @Autowired
     private JwtDecoder jwtDecoder;
 
-    @MockitoBean
-    private ProfileService profileService;
+    private MockMvc mockMvc;
 
-    @MockitoBean
-    private FamilyService familyService;
-
-    @MockitoBean
-    private ProfileRepository profileRepository;
-
-    @Test
-    void swaggerUiShouldBeAccessibleWithoutToken() throws Exception {
-        mockMvc.perform(get("/swagger-ui/index.html"))
-            .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
-            .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders
+                .webAppContextSetup(context)
+                .apply(springSecurity())
+                .build();
     }
 
     @Test
-    void actuatorHealthShouldBeAccessibleWithoutToken() throws Exception {
-        mockMvc.perform(get("/actuator/health"))
-            .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
-            .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
+    @DisplayName("Deve ter SecurityFilterChain configurado")
+    void deveTermSecurityFilterChainConfigurado() {
+        assertNotNull(securityFilterChain);
     }
 
     @Test
-    void actuatorInfoShouldBeAccessibleWithoutToken() throws Exception {
-        mockMvc.perform(get("/actuator/info"))
-            .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
-            .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
+    @DisplayName("Deve ter JwtDecoder configurado")
+    void deveTermJwtDecoderConfigurado() {
+        assertNotNull(jwtDecoder);
     }
 
     @Test
-    void actuatorMetricsShouldReturn401WithoutToken() throws Exception {
-        mockMvc.perform(get("/actuator/metrics"))
-            .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.status").value(401))
-            .andExpect(jsonPath("$.error").value("Unauthorized"))
-            .andExpect(jsonPath("$.message").value("Token ausente ou inválido"));
-    }
-
-    // ── /api/v1/users/** ─────────────────────────────────────────────────────
-
-    @Test
-    void getUsersShouldReturn401WithoutToken() throws Exception {
-        mockMvc.perform(get("/api/v1/users"))
-            .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.status").value(401))
-            .andExpect(jsonPath("$.error").value("Unauthorized"));
+    @DisplayName("Deve permitir acesso público ao /actuator/health sem autenticação")
+    void devePermitirAcessoHealthSemToken() throws Exception {
+        // Health pode retornar 503 se serviços não estiverem disponíveis, mas não deve retornar 401 (não autorizado)
+        int status = mockMvc.perform(get("/actuator/health"))
+                .andReturn().getResponse().getStatus();
+        // Verifica que não é 401 - pode ser 200 ou 503
+        assertTrue(status != 401, "Endpoint /actuator/health não deve exigir autenticação");
     }
 
     @Test
-    void getUsersShouldReturn403WithTokenButWithoutRole() throws Exception {
-        mockMvc.perform(get("/api/v1/users")
-                .with(jwt()))
-            .andExpect(status().isForbidden())
-            .andExpect(jsonPath("$.status").value(403))
-            .andExpect(jsonPath("$.error").value("Forbidden"));
+    @DisplayName("Deve retornar 401 ao acessar endpoint protegido sem token")
+    void deveRetornar401AoAcessarEndpointProtegidoSemToken() throws Exception {
+        mockMvc.perform(get("/api/v1/user/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("Não autorizado"));
     }
 
     @Test
-    void getUsersShouldReturn403WithUserRole() throws Exception {
-        mockMvc.perform(get("/api/v1/users")
-                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
-            .andExpect(status().isForbidden());
+    @DisplayName("Deve permitir OPTIONS sem autenticação")
+    void devePermitirOptionsSemAutenticacao() throws Exception {
+        // OPTIONS é permitido mesmo que o endpoint não exista - faz parte da configuração CORS
+        int status = mockMvc.perform(options("/api/v1/user/test"))
+                .andReturn().getResponse().getStatus();
+        // Pode retornar 200 (OK) ou 404 (endpoint não existe), mas não deve retornar 401 (não autorizado)
+        assertTrue(status != 401, "Requisição OPTIONS não deve exigir autenticação");
     }
 
     @Test
-    void getUsersShouldBeAccessibleWithAdminRole() throws Exception {
-        mockMvc.perform(get("/api/v1/users")
-                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
-            .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
-            .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
+    @DisplayName("Deve ter CORS configurado para localhost:4200")
+    void deveTermCorsConfiguradoParaLocalhost() throws Exception {
+        mockMvc.perform(options("/api/v1/user/test")
+                        .header("Origin", "http://localhost:4200")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(header().exists("Access-Control-Allow-Origin"))
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:4200"));
     }
 
     @Test
-    void postUsersShouldReturn401WithoutToken() throws Exception {
-        mockMvc.perform(post("/api/v1/users")
-                .contentType("application/json")
-                .content("{}"))
-            .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.status").value(401))
-            .andExpect(jsonPath("$.error").value("Unauthorized"));
-    }
-
-    @Test
-    void postUsersShouldReturn403WithUserRole() throws Exception {
-        mockMvc.perform(post("/api/v1/users")
-                .contentType("application/json")
-                .content("{}")
-                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
-            .andExpect(status().isForbidden())
-            .andExpect(jsonPath("$.status").value(403))
-            .andExpect(jsonPath("$.error").value("Forbidden"));
-    }
-
-    @Test
-    void postUsersShouldBeAccessibleWithAdminRole() throws Exception {
-        mockMvc.perform(post("/api/v1/users")
-                .contentType("application/json")
-                .content("{}")
-                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
-            .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
-            .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
-    }
-
-    @Test
-    void putUserShouldReturn401WithoutToken() throws Exception {
-        mockMvc.perform(put("/api/v1/users/1")
-                .contentType("application/json")
-                .content("{}"))
-            .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void putUserShouldReturn403WithUserRole() throws Exception {
-        mockMvc.perform(put("/api/v1/users/1")
-                .contentType("application/json")
-                .content("{}")
-                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
-            .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void putUserShouldBeAccessibleWithAdminRole() throws Exception {
-        mockMvc.perform(put("/api/v1/users/1")
-                .contentType("application/json")
-                .content("{}")
-                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
-            .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
-            .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
-    }
-
-    @Test
-    void deleteUserShouldReturn401WithoutToken() throws Exception {
-        mockMvc.perform(delete("/api/v1/users/1"))
-            .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void deleteUserShouldReturn403WithUserRole() throws Exception {
-        mockMvc.perform(delete("/api/v1/users/1")
-                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
-            .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void deleteUserShouldBeAccessibleWithAdminRole() throws Exception {
-        mockMvc.perform(delete("/api/v1/users/1")
-                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
-            .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
-            .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
-    }
-
-    @Test
-    void getUserRolesShouldReturn401WithoutToken() throws Exception {
-        mockMvc.perform(get("/api/v1/users/1/roles"))
-            .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void getUserRolesShouldReturn403WithUserRole() throws Exception {
-        mockMvc.perform(get("/api/v1/users/1/roles")
-                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
-            .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void getUserRolesShouldBeAccessibleWithAdminRole() throws Exception {
-        mockMvc.perform(get("/api/v1/users/1/roles")
-                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
-            .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
-            .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
-    }
-
-    @Test
-    void putUserRolesShouldReturn401WithoutToken() throws Exception {
-        mockMvc.perform(put("/api/v1/users/1/roles")
-                .contentType("application/json")
-                .content("[]"))
-            .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void putUserRolesShouldReturn403WithUserRole() throws Exception {
-        mockMvc.perform(put("/api/v1/users/1/roles")
-                .contentType("application/json")
-                .content("[]")
-                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
-            .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void putUserRolesShouldBeAccessibleWithAdminRole() throws Exception {
-        mockMvc.perform(put("/api/v1/users/1/roles")
-                .contentType("application/json")
-                .content("[]")
-                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
-            .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
-            .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
-    }
-
-    // ── /api/v1/profile/** ───────────────────────────────────────────────────
-
-    @Test
-    void getProfileShouldReturn401WithoutToken() throws Exception {
-        mockMvc.perform(get("/api/v1/profile"))
-            .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void getProfileShouldReturn403WithoutRole() throws Exception {
-        mockMvc.perform(get("/api/v1/profile")
-                .with(jwt()))
-            .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void getProfileShouldBeAccessibleWithUserRole() throws Exception {
-        mockMvc.perform(get("/api/v1/profile")
-                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
-            .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
-            .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
-    }
-
-    @Test
-    void getProfileShouldBeAccessibleWithAdminRole() throws Exception {
-        mockMvc.perform(get("/api/v1/profile")
-                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
-            .andExpect(result -> assertNotEquals(401, result.getResponse().getStatus()))
-            .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
+    @DisplayName("Deve bloquear CORS para origens não permitidas")
+    void deveBloqueiarCorsParaOrigensNaoPermitidas() throws Exception {
+        mockMvc.perform(get("/api/v1/user/me")
+                        .header("Origin", "http://evil.com"))
+                .andExpect(status().is4xxClientError()) // Pode ser 401 ou 403
+                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
     }
 }

@@ -11,7 +11,7 @@ echo.
 echo 1 - Build Completo
 echo 2 - Build da Aplicacao
 echo 3 - Rodar Testes
-echo 4 - Gerar Documentacao (Swagger + Redoc)
+echo 4 - Gerar Documentacao Redoc
 echo 0 - Sair
 echo.
 set /p opcao=Escolha uma opcao: 
@@ -61,13 +61,20 @@ exit /b 0
 :testes
 echo.
 echo [TESTES]
-call mvn clean test
+call mvn clean test jacoco:report
 if %errorlevel% neq 0 (
     echo ERRO nos testes!
     pause
     goto menu
 )
 echo Testes executados com sucesso!
+echo.
+echo Relatorio de cobertura gerado em: target\site\jacoco\index.html
+echo Deseja abrir o relatorio de cobertura? (S/N)
+set /p abrir=
+if /i "%abrir%"=="S" (
+    start target\site\jacoco\index.html
+)
 exit /b 0
 
 :: ===============================
