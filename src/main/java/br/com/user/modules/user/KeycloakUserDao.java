@@ -47,9 +47,9 @@ public class KeycloakUserDao {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.getFirst());
     }
 
-    public Optional<Boolean> existsByEmail(String email) {
+    public boolean existsByEmail(String email) {
         String sql = """
-                 SELECT 1
+                 SELECT COUNT(*)
                  FROM USER_ENTITY u
                  WHERE u.EMAIL = :email
                 """;
@@ -57,7 +57,8 @@ public class KeycloakUserDao {
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("email", email);
 
-        return Optional.of(jdbcTemplate.queryForObject(sql, params, Integer.class) != null);
+        Integer count = jdbcTemplate.queryForObject(sql, params, Integer.class);
+        return count != null && count > 0;
     }
 
     public List<KeycloakUserDto> findByFamilyId(long familyId) {
@@ -99,7 +100,9 @@ public class KeycloakUserDao {
                  FROM USER_ENTITY u
                  INNER JOIN REALM r ON u.REALM_ID = r.ID
                  LEFT JOIN FAMILY_MEMBER m ON u.ID = m.USER_ID
-                 WHERE r.NAME = :realmName AND m.USER_ID IS NULL
+                 WHERE r.NAME = :realmName
+                   AND m.USER_ID IS NULL
+                   AND u.SERVICE_ACCOUNT_CLIENT_LINK IS NULL
                  ORDER BY u.USERNAME
                 """;
 

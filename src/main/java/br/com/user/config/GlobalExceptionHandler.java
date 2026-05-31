@@ -1,6 +1,8 @@
 package br.com.user.config;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -17,6 +19,8 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<Map<String, Object>> handleApiException(ApiException ex,
@@ -81,7 +85,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNoResourceFound(NoResourceFoundException ex,
-                                                                      HttpServletRequest request) {
+                                                                     HttpServletRequest request) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", TimestampUtils.now());
         body.put("status", HttpStatus.NOT_FOUND.value());
@@ -93,7 +97,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNoHandlerFound(NoHandlerFoundException ex,
-                                                                     HttpServletRequest request) {
+                                                                    HttpServletRequest request) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", TimestampUtils.now());
         body.put("status", HttpStatus.NOT_FOUND.value());
@@ -106,6 +110,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex,
                                                                       HttpServletRequest request) {
+        log.error("Erro inesperado na API: {} - {}", request.getRequestURI(), ex.getMessage(), ex);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", TimestampUtils.now());
         body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());

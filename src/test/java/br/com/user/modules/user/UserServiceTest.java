@@ -147,7 +147,7 @@ class UserServiceTest {
         when(keycloakUserDao.findByRealmAndUsername("development", "joao.silva"))
                 .thenReturn(Optional.of(keycloakUserDto));
         when(keycloakUserDao.existsByEmail("novoemail2@email.com"))
-                .thenReturn(Optional.empty());
+                .thenReturn(false);
         doNothing().when(keycloakAdminClient).updateUser(anyString(), anyString(), anyString(), anyString(), anyBoolean());
         doNothing().when(eventPublisher).publish(any(EventType.class), anyString(), any());
 
@@ -176,7 +176,7 @@ class UserServiceTest {
         when(keycloakUserDao.findByRealmAndUsername("development", "joao.silva"))
                 .thenReturn(Optional.of(keycloakUserDto));
         when(keycloakUserDao.existsByEmail("emailemuso@email.com"))
-                .thenReturn(Optional.of(true));
+                .thenReturn(true);
 
         // Act & Assert
         ApiException exception = assertThrows(ApiException.class, () -> userService.updateUser(jwt, request));
